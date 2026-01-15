@@ -30,11 +30,13 @@ export function IngredientsPanel({
 
   // Find the portion size entry for the selected serving size
   // Fall back to the closest available serving size if exact match not found
-  const effectiveServingSize = availableServings.includes(servingSize)
+  const effectiveServingSize = availableServings.length === 0
     ? servingSize
-    : availableServings.reduce((prev, curr) =>
-        Math.abs(curr - servingSize) < Math.abs(prev - servingSize) ? curr : prev
-      );
+    : availableServings.includes(servingSize)
+      ? servingSize
+      : availableServings.reduce((prev, curr) =>
+          Math.abs(curr - servingSize) < Math.abs(prev - servingSize) ? curr : prev
+        );
 
   const portionEntry = portionSizes.find(ps => ps.portions === effectiveServingSize);
   const portionIngredients = portionEntry?.ingredients ?? [];
