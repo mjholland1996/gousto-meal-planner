@@ -48,8 +48,17 @@ export function IngredientsPanel({
     ? ingredients.filter(ing => ingredientIds.includes(ing.id))
     : ingredients;
 
-  // Clean up ingredient label by removing "x0" suffix (data artifact)
-  const cleanLabel = (label: string) => label.replace(/\s*x0$/i, '');
+  // Clean up ingredient label:
+  // - Remove "x0" suffix (data artifact)
+  // - Remove "xN" suffix when we have a quantity (e.g., "White potato x4" → "White potato")
+  const cleanLabel = (label: string, hasQuantity: boolean) => {
+    let cleaned = label.replace(/\s*x0$/i, '');
+    if (hasQuantity) {
+      // Remove trailing " xN" or " x N" patterns (pack sizes)
+      cleaned = cleaned.replace(/\s*x\s*\d+$/i, '');
+    }
+    return cleaned;
+  };
 
   // Get quantity for an ingredient
   const getQuantity = (id: string) => quantityMap.get(id) ?? 1;
@@ -80,7 +89,7 @@ export function IngredientsPanel({
               )}
               <div>
                 <p className="font-medium text-gray-900">
-                  {cleanLabel(ingredient.label)}
+                  {cleanLabel(ingredient.label, getQuantity(ingredient.id) > 1)}
                   {getQuantity(ingredient.id) > 1 && (
                     <span className="ml-1 text-emerald-600 font-semibold">
                       × {getQuantity(ingredient.id)}
