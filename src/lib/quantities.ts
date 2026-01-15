@@ -21,41 +21,48 @@ export interface CombinedIngredient {
 /**
  * Parse quantity from an ingredient label
  * Examples:
- *   "Chicken breast strips (250g)" → { amount: 250, unit: "g" }
- *   "White potato x4" → { amount: 4, unit: "pcs" }
- *   "Curry powder (1tbsp)" → { amount: 1, unit: "tbsp" }
- *   "Red onion" → { amount: 1, unit: "pcs" }
+ *   "Chicken breast strips (250g)" → { amount: 250, unit: "g", isPackBased: true }
+ *   "White potato x4" → { amount: 4, unit: "pcs", isPackBased: false }
+ *   "Curry powder (1tbsp)" → { amount: 1, unit: "tbsp", isPackBased: true }
+ *   "Brioche style buns (2pcs)" → { amount: 2, unit: "pcs", isPackBased: true }
+ *   "Red onion" → { amount: 1, unit: "pcs", isPackBased: false }
+ *
+ * isPackBased indicates whether in_box represents pack count (multiply) or item count (use directly)
  */
-export function parseQuantityFromLabel(label: string): { amount: number; unit: string } {
+export function parseQuantityFromLabel(label: string): { amount: number; unit: string; isPackBased: boolean } {
   // Clean up the label first - remove x0 suffix
   const cleanedLabel = label.replace(/\s*x0$/i, '');
 
-  // Pattern 1: Quantity in parentheses with unit - e.g., "(250g)", "(1tbsp)", "(15ml)"
+  // Pattern 1: Quantity in parentheses with unit - e.g., "(250g)", "(1tbsp)", "(15ml)", "(2pcs)"
+  // These are PACK-BASED: the amount is per pack, in_box is pack count
   const parenMatch = cleanedLabel.match(/\((\d+(?:\.\d+)?)\s*(g|kg|ml|l|tsp|tbsp|pcs?)\)/i);
   if (parenMatch) {
-    return { amount: parseFloat(parenMatch[1]), unit: parenMatch[2].toLowerCase() };
+    return { amount: parseFloat(parenMatch[1]), unit: parenMatch[2].toLowerCase(), isPackBased: true };
   }
 
-  // Pattern 2: Quantity in parentheses without unit - e.g., "(0.5pcs)"
-  const parenNumMatch = cleanedLabel.match(/\((\d+(?:\.\d+)?)\s*(?:pcs?)?\)/i);
+  // Pattern 2: Quantity in parentheses without unit - e.g., "(0.5)"
+  // These are PACK-BASED
+  const parenNumMatch = cleanedLabel.match(/\((\d+(?:\.\d+)?)\)/i);
   if (parenNumMatch) {
-    return { amount: parseFloat(parenNumMatch[1]), unit: 'pcs' };
+    return { amount: parseFloat(parenNumMatch[1]), unit: 'pcs', isPackBased: true };
   }
 
-  // Pattern 3: Pack size with x - e.g., "x4", "x 4"
+  // Pattern 3: Pack size with x suffix - e.g., "Ciabatta x2", "White potato x4"
+  // These are COUNT-BASED: in_box IS the actual item count
   const xMatch = cleanedLabel.match(/x\s*(\d+)$/i);
   if (xMatch) {
-    return { amount: parseInt(xMatch[1]), unit: 'pcs' };
+    return { amount: parseInt(xMatch[1]), unit: 'pcs', isPackBased: false };
   }
 
-  // Pattern 4: Trailing number without x - e.g., "Red onion x2" already handled, but "2 Red onions"
+  // Pattern 4: Leading number - e.g., "2 brioche style buns"
+  // These are PACK-BASED: the number indicates items per pack
   const leadingNumMatch = cleanedLabel.match(/^(\d+)\s*x?\s+/i);
   if (leadingNumMatch) {
-    return { amount: parseInt(leadingNumMatch[1]), unit: 'pcs' };
+    return { amount: parseInt(leadingNumMatch[1]), unit: 'pcs', isPackBased: true };
   }
 
-  // Default: 1 piece
-  return { amount: 1, unit: 'pcs' };
+  // Default: 1 piece, count-based (in_box is the actual count)
+  return { amount: 1, unit: 'pcs', isPackBased: false };
 }
 
 /**
@@ -103,9 +110,11 @@ export function formatQuantity(amount: number, unit: string): string {
 /**
  * Combine ingredients from multiple recipes
  *
- * The `quantity` (in_box) from portionSizes means:
- * - For weight/volume items (g, kg, ml, l, tsp, tbsp): number of PACKS → multiply by label amount
- * - For count items (pcs, xN suffix, or no unit): the actual COUNT of items
+ * The `quantity` (in_box) from portionSizes means different things:
+ * - Pack-based items (bracketed quantities like "(250g)", "(2pcs)", or leading numbers):
+ *   in_box = number of packs, multiply by label amount
+ * - Count-based items ("xN" suffix or no quantity):
+ *   in_box = actual item count, use directly
  */
 export function combineIngredients(
   ingredientLists: Array<{
@@ -132,20 +141,20 @@ export function combineIngredients(
     }>;
   }>();
 
-  // Units where in_box means "number of packs" (multiply by label amount)
-  const packBasedUnits = ['g', 'kg', 'ml', 'l', 'tsp', 'tbsp'];
+  // Weight/volume units always display with their unit (not "pcs")
+  const measuredUnits = ['g', 'kg', 'ml', 'l', 'tsp', 'tbsp'];
 
   for (const { recipeTitle, ingredients } of ingredientLists) {
     for (const ing of ingredients) {
-      const { amount, unit } = parseQuantityFromLabel(ing.label);
+      const { amount, unit, isPackBased } = parseQuantityFromLabel(ing.label);
 
-      // Determine total amount based on unit type
+      // Determine total amount based on whether it's pack-based or count-based
       let totalAmount: number;
-      if (packBasedUnits.includes(unit.toLowerCase())) {
-        // For weight/volume: in_box is pack count, multiply by label amount
+      if (isPackBased) {
+        // Pack-based: in_box is pack count, multiply by label amount
         totalAmount = amount * ing.quantity;
       } else {
-        // For count-based items (pcs, xN): in_box IS the actual count
+        // Count-based: in_box IS the actual count
         totalAmount = ing.quantity;
       }
 
@@ -157,7 +166,7 @@ export function combineIngredients(
         label: ing.label,
         imageUrl: ing.imageUrl,
         parsedAmount: totalAmount,
-        unit: packBasedUnits.includes(unit.toLowerCase()) ? unit : 'pcs',
+        unit: measuredUnits.includes(unit.toLowerCase()) ? unit : 'pcs',
         portionQuantity: ing.quantity,
         recipeTitle,
       });
