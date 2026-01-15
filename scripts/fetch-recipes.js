@@ -209,6 +209,11 @@ function fetchAllDetails(recipes) {
 
     const detail = fetchRecipeDetail(recipe.slug);
     if (detail) {
+      // Skip recipes without portion size data (can't accurately show serving info)
+      if (detail.availableServings.length === 0) {
+        console.log(`  Skipping ${recipe.slug} - no portion size data available`);
+        continue;
+      }
       fs.writeFileSync(
         path.join(DETAILS_DIR, `${recipe.slug}.json`),
         JSON.stringify(detail, null, 2)
