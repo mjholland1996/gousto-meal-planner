@@ -1,5 +1,6 @@
 {
   "title": "PASTA DE TOMATE",
   "slug": "pasta-de-tomate",
-  "content": "1 Kg. tomates\n1 cebolla \n1/2 zanahoria chica rallada\n1 rama de apio\n1 ramito compuesto (romero, tomillo, perejil, salvia)\n1 ch azúcar\n1 ch ajo molido\n \nLicuar el tomate con la cebolla, poner en una olla con todos los ingredientes menos el azúcar y dejar cocinar hasta que se haga puré. Colar con un colador muy fino y poner nuevamente en una olla hasta que tome punto de pasta, al final se agrega el azúcar."
+  "ingredientes": "1 Kg. tomates\n1 cebolla\n1/2 zanahoria chica rallada\n1 rama de apio\n1 ramito compuesto (romero, tomillo, perejil, salvia)\n1 ch azúcar\n1 ch ajo molido",
+  "metodo": "Licuar el tomate con la cebolla, poner en una olla con todos los ingredientes menos el azúcar y dejar cocinar hasta que se haga puré. Colar con un colador muy fino y poner nuevamente en una olla hasta que tome punto de pasta, al final se agrega el azúcar."
 }
